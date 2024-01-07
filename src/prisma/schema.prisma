@@ -1,0 +1,289 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// User Table
+model User {
+    id                    Int                 @id @default(autoincrement())
+    firstName             String
+    lastName              String
+    phoneNo               String
+    email                 String
+    verified              Boolean             @default(false)
+    userType              Int            
+    dob                   DateTime
+    profileImage          String?
+    bloodGroup            Int?
+    registeredOn          DateTime            @default(now())
+    updatedOn             DateTime            @updatedAt
+    //Relations:
+    auth                  Auth?
+    documents             User_Documents?
+    vehicles              Vehicles[]
+    rideHistoryRiderUser  RideHistory[]       @relation("RiderUserRelation")
+    rideHistoryDriverUser RideHistory[]       @relation("DriverUserRelation")
+    vehicle_Documents     Vehicle_Documents[]
+}
+
+
+//Admin Table
+model Admin {
+    id                              Int                      @id @default(autoincrement())
+    name                           String
+    role                           Int
+    userName                       String
+    password                       String                   // Assuming this will be hashed
+    isBanned                       Boolean                  @default(false)
+    bannedReason                   String?
+    createdOn                      DateTime                 @default(now())
+    updatedOn                      DateTime                 @updatedAt
+    //Relations:
+    aadharVerifiedDocs             User_Documents?          @relation("AadharVerifiedByAdmin")
+    panVerifiedDocs                User_Documents?          @relation("PanVerifiedByAdmin")
+    licenceVerifiedDocs            User_Documents?          @relation("LicenceVerifiedByAdmin")
+    vehicleTypesCreated            VehicleTypes[]           @relation("CreatedByAdmin")
+    vehicleTypesUpdated            VehicleTypes[]           @relation("UpdatedByAdmin")
+    vehiclesVerified               Vehicles[]               @relation("VerifiedByAdmin")
+    adminPermissions               AdminPermissions[]       @relation("PermissionsByAdmin")
+    addedInsuranceProviders        InsuranceProvider[]      @relation("AddedByAdmin")
+    updatedInsuranceProviders      InsuranceProvider[]      @relation("UpdatedByAdmin")
+    bannedInsuranceProviders       InsuranceProvider[]      @relation("BannedByAdmin")
+    addedPaymentMethods            PaymentMethod[]          @relation("AddedByAdmin")
+    updatedPaymentMethods          PaymentMethod[]          @relation("UpdatedByAdmin")
+    bannedPaymentMethods           PaymentMethod[]          @relation("BannedByAdmin")
+    addedRideCancellationReasons   RideCancellationReason[] @relation("AddedByAdmin")
+    updatedRideCancellationReasons RideCancellationReason[] @relation("UpdatedByAdmin")
+    allowedLocations               AllowedLocation[]        @relation("AddedByAdmin")
+    updatedAllowedLocations        AllowedLocation[]        @relation("UpdatedByAdmin")
+    bannedAllowedLocations         AllowedLocation[]        @relation("BannedByAdmin")
+    pollution_Vehicle_Documents    Vehicle_Documents[]      @relation("PollutionVerifiedByAdmin")
+    insurance_Vehicle_Documents    Vehicle_Documents[]      @relation("InsuranceVerifiedByAdmin")
+    rc_Vehicle_Documents           Vehicle_Documents[]      @relation("RCVerifiedByAdmin")
+}
+
+//Auth Table
+model Auth {
+    id          Int      @id @default(autoincrement())
+    authType   Int
+    identifier String   @unique
+    password   String
+    token      String?
+    userId     Int      @unique
+    user       User     @relation(fields: [userId], references: [id])
+}
+
+//User_Documents Table :
+model User_Documents {
+    id                  Int      @id @default(autoincrement())
+    aadharCardNo        String
+    aadharFront         String
+    aadharBack          String
+    aadharVerified      Boolean  @default(false)
+    aadharVerifiedBy    Admin?   @relation(name: "AadharVerifiedByAdmin", fields: [aadharVerifiedById], references: [id])
+    panCardNo           String?
+    panImage            String?
+    panVerified         Boolean? @default(false)
+    panVerifiedBy       Admin?   @relation(name: "PanVerifiedByAdmin", fields: [panVerifiedById], references: [id])
+    licenceNo           String?
+    licenceImage        String?
+    licenceVerified     Boolean? @default(false)
+    licenceVerifiedBy   Admin?   @relation(name: "LicenceVerifiedByAdmin", fields: [licenceVerifiedById], references: [id])
+    userId              Int      @unique
+    user                User     @relation(fields: [userId], references: [id])
+    // Foreign key fields
+    aadharVerifiedById  Int      @unique
+    panVerifiedById     Int      @unique
+    licenceVerifiedById Int      @unique
+}
+
+//Vehicle_type Table
+model VehicleTypes {
+    id              Int           @id @default(autoincrement())
+    vehicleType   String
+    createdById   Int
+    createdBy     Admin         @relation(name: "CreatedByAdmin", fields: [createdById], references: [id])
+    createdOn     DateTime      @default(now())
+    updatedById   Int
+    updatedBy     Admin         @relation(name: "UpdatedByAdmin", fields: [updatedById], references: [id])
+    updatedOn     DateTime      @updatedAt
+    vehicles      Vehicles[]
+    rideHistory   RideHistory[] @relation("VehicleTypeHistory")
+}
+
+model Vehicles {
+    id            Int          @id @default(autoincrement())
+    userId        Int
+    user          User         @relation(fields: [userId], references: [id])
+    vehicleTypeId Int
+    vehicleType   VehicleTypes @relation(fields: [vehicleTypeId], references: [id])
+    fuelType      Int
+    vehicleNo     String
+    verified      Boolean      @default(false)
+    verifiedBy    Admin        @relation(name: "VerifiedByAdmin", fields: [verifiedById], references: [id])
+    vehicleImages String[]
+    registeredOn  DateTime     @default(now())
+    updatedOn     DateTime     @default(now())
+    verifiedById      Int
+    vehicle_Documents Vehicle_Documents[]
+}
+
+
+
+model AdminPermissions {
+    id            Int      @id @default(autoincrement())
+    adminId       Int
+    admin         Admin    @relation(name: "PermissionsByAdmin", fields: [adminId], references: [id])
+    write         Boolean  @default(false)
+    update        Boolean  @default(false)
+    delete        Boolean  @default(false)
+    download      Boolean  @default(false)
+    addedOn       DateTime @default(now())
+
+    @@unique([adminId, id], name: "unique_admin_permissions") //Unique constraint to ensure each admin has only one set of permissions
+}
+
+model InsuranceProvider {
+    id                 Int                 @id @default(autoincrement())
+    providerName      String
+    addedById         Int
+    addedBy           Admin               @relation(name: "AddedByAdmin", fields: [addedById], references: [id])
+    addedOn           DateTime            @default(now())
+    updatedById       Int
+    updatedBy         Admin               @relation(name: "UpdatedByAdmin", fields: [updatedById], references: [id])
+    updatedOn         DateTime            @updatedAt
+    isBanned          Boolean             @default(false)
+    bannedById        Int?
+    bannedBy          Admin?              @relation(name: "BannedByAdmin", fields: [bannedById], references: [id])
+    bannedReason      String?
+    vehicle_Documents Vehicle_Documents[]
+}
+
+model PaymentMethod {
+    id              Int           @id @default(autoincrement())
+    paymentMethod   String
+    addedById       Int
+    addedBy         Admin         @relation(name: "AddedByAdmin", fields: [addedById], references: [id])
+    addedOn         DateTime      @default(now())
+    updatedById     Int
+    updatedBy       Admin         @relation(name: "UpdatedByAdmin", fields: [updatedById], references: [id])
+    updatedOn       DateTime      @updatedAt
+    isBanned        Boolean       @default(false)
+    bannedById      Int?
+    bannedBy        Admin?        @relation(name: "BannedByAdmin", fields: [bannedById], references: [id])
+    bannedReason    String?
+    rideHistory     RideHistory[] @relation("PaymentHistory")
+}
+
+model RideCancellationReason {
+    id                    Int           @id @default(autoincrement())
+    cause                String
+    addedById            Int
+    addedBy              Admin         @relation(name: "AddedByAdmin", fields: [addedById], references: [id])
+    addedOn              DateTime      @default(now())
+    updatedById          Int
+    updatedBy            Admin         @relation(name: "UpdatedByAdmin", fields: [updatedById], references: [id])
+    updatedOn            DateTime      @updatedAt
+    rideHistory          RideHistory[] @relation("CancelledReasonRelation")
+}
+
+model AllowedLocation {
+    location    String   @id @unique
+    addedById   Int
+    addedBy     Admin    @relation(name: "AddedByAdmin", fields: [addedById], references: [id])
+    addedOn     DateTime @default(now())
+    updatedById Int
+    updatedBy   Admin    @relation(name: "UpdatedByAdmin", fields: [updatedById], references: [id])
+    updatedOn   DateTime @updatedAt
+    isBanned    Boolean  @default(false)
+    bannedById  Int
+    bannedBy    Admin   @relation(name: "BannedByAdmin", fields: [bannedById], references: [id])
+    banReason   String?
+}
+
+model RideHistory {
+    id                Int        @id @default(autoincrement())
+    riderUserId       Int
+    driverUserId      Int
+    vehicleTypeId     Int
+    pickupLocation    String     @db.VarChar(255)
+    dropLocation      String     @db.VarChar(255)
+    fare              String     @db.VarChar(50)
+    paymentMethodId   Int
+    status            Int
+    cancelledReasonId Int?
+    rideRating        Int
+    createdOn         DateTime   @default(now())
+    riderUser       User                    @relation("RiderUserRelation", fields: [riderUserId], references: [id])
+    driverUser      User                    @relation("DriverUserRelation", fields: [driverUserId], references: [id])
+    vehicleType     VehicleTypes            @relation("VehicleTypeHistory", fields: [vehicleTypeId], references: [id])
+    paymentMethod   PaymentMethod           @relation("PaymentHistory", fields: [paymentMethodId], references: [id])
+    cancelledReason RideCancellationReason? @relation("CancelledReasonRelation", fields: [cancelledReasonId], references: [id])
+}
+
+model Vehicle_Documents {
+    id                  Int               @id @default(autoincrement())
+    vehicleId           Int
+    vehicle             Vehicles          @relation(fields: [vehicleId], references: [id])
+    userId              Int
+    user                User              @relation(fields: [userId], references: [id])
+    rcNo                String
+    rcExpiryDate        DateTime
+    rcImage             String
+    rcVerified          Boolean           @default(false)
+    rcVerifiedBy        Admin             @relation(name: "RCVerifiedByAdmin", fields: [rcVerifiedById], references: [id])
+    insuranceProviderId Int
+    insuranceProvider   InsuranceProvider @relation(fields: [insuranceProviderId], references: [id])
+    insurance           String
+    insuranceExpiryDate DateTime
+    insuranceVerified   Boolean?          @default(false)
+    insuranceVerifiedBy Admin             @relation(name: "InsuranceVerifiedByAdmin", fields: [insuranceVerifiedById], references: [id])
+    pollution           String
+    pollutionExpiryDate DateTime
+    pollutionVerified   Boolean?          @default(false)
+    pollutionVerifiedBy Admin             @relation(name: "PollutionVerifiedByAdmin", fields: [pollutionVerifiedById], references: [id])
+    // Foreign key fields
+    rcVerifiedById        Int   
+    insuranceVerifiedById Int
+    pollutionVerifiedById Int
+}
+// enum UserType {
+//     RIDER
+//     DRIVER
+// }
+// enum FuelType {
+//     PETROL
+//     DIESEL
+//     CNG
+//     ELECTRIC
+// }
+// enum BloodGroup {
+//     A_POSITIVE
+//     A_NEGATIVE
+//     B_POSITIVE
+//     B_NEGATIVE
+//     AB_POSITIVE
+//     AB_NEGATIVE
+//     O_POSITIVE
+//     O_NEGATIVE
+// }
+// enum RideStatus {
+//     Matching
+//     Matched
+//     RideStarted
+//     Completed
+//     Cancelled
+// }
+// enum UserRole {
+//     ADMIN
+//     REPRESENTATIVE
+// }
+// enum AuthType {
+//     EMAIL
+//     GOOGLE
+//     FACEBOOK
+// }
