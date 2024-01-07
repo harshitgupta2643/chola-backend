@@ -14,7 +14,7 @@ app.use(express.json());
 
 export const signup = async (req, res) => {
     try {
-        const { firstName, lastName, phoneNo, email, userType, dob, bloodGroup, password,authType,identifier } = req.body;
+        const { firstName, lastName, phoneNo, email, userType, dob, bloodGroup, password, authType, identifier } = req.body;
         const newUser = await prisma.user.create({
             data: {
                 firstName,
@@ -27,7 +27,7 @@ export const signup = async (req, res) => {
                 auth: {
                     create: {
                         password,
-                        authType,identifier
+                        authType, identifier
                     }
                 }
             },
@@ -78,7 +78,7 @@ export const signin = async (req, res) => {
         // console.log(userWithAuth);
         if (user) {
             const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || '');
-            res.json({message: 'Signin successful', token });
+            res.json({ message: 'Signin successful', token });
         } else {
             res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -92,7 +92,7 @@ export const signout = async (req, res) => {
     try {
         res.clearCookie('access_token');
         res.status(200).json("User has been logged out");
-      } catch (error) {
+    } catch (error) {
         next(error);
-      }
+    }
 };

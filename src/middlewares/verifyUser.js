@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import { errorHandler } from "./error.js";
 dotenv.config();
 export const verifyToken= (req, res, next)=>{
-    console.log('pehle');
     const token = req.cookies.token;
     console.log('hello');
     console.log(token);
