@@ -1,59 +1,85 @@
-import PrismaClient from '@prisma/client';
+/* eslint-disable no-undef */
+import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import bcrypt from 'bcrypt';
+// import bcrypt from 'bcrypt';
+import express from 'express';
+
 dotenv.config();
-// import process from 'process';
 const prisma = new PrismaClient();
+const app = express();
+// const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
 
 export const signup = async (req, res) => {
     try {
-        const { firstName, lastName, phoneNumber, email, dateOfBirth, gender, bloodType, password } = req.body;
-
-        // Hash the password before storing it in the database
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create a new user in the database
+        const { firstName, lastName, phoneNo, email, userType, dob, bloodGroup, password,authType,identifier } = req.body;
         const newUser = await prisma.user.create({
             data: {
                 firstName,
                 lastName,
-                phoneNumber,
+                phoneNo,
+                dob,
+                bloodGroup,
                 email,
-                dateOfBirth,
-                gender,
-                bloodType,
-                password: hashedPassword
-            }
+                userType,
+                auth: {
+                    create: {
+                        password,
+                        authType,identifier
+                    }
+                }
+            },
         });
-
         res.json({ message: 'Signup successful', userId: newUser.id });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
 export const signin = async (req, res) => {
     try {
-        const { email, phoneNumber, password } = req.body;
+        const { email, phoneNo, password } = req.body;
 
-        // Check if the user exists in the database based on email or phone number and password
-        const user = await prisma.User.findFirst({
-            where: {
-                OR: [
-                    { email, password },
-                    { phoneNumber, password }
-                ]
-            }
-        });
+        let user;
 
+        // Check if email exists and authenticate based on email
+        if (email) {
+            user = await prisma.user.findUnique({
+                where: { email },
+                select: {
+                    email: true,
+                    // phoneNo: true,
+                    auth: {
+                        select: {
+                            password: true,
+                        },
+                    },
+                },
+            });
+        }
+
+        // If email is not provided or user not found by email, try phone number
+        if (!user && phoneNo) {
+            user = await prisma.user.findUnique({
+                where: { phoneNo }, select: {
+                    // email: true,
+                    phoneNo: true,
+                    auth: {
+                        select: {
+                            password: true,
+                        },
+                    },
+                },
+            });
+        }
+        // console.log(userWithAuth);
         if (user) {
-            // If the user exists and the password matches, sign in the user using JWT
-            const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
-
-            res.json({ token });
+            const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || '');
+            res.json({message: 'Signin successful', token });
         } else {
-            // If the user does not exist or the password does not match, send an error response
             res.status(401).json({ error: 'Invalid credentials' });
         }
     } catch (error) {
@@ -64,44 +90,9 @@ export const signin = async (req, res) => {
 
 export const signout = async (req, res) => {
     try {
-        const { userId } = req;
-
-        // Invalidate the user's token by deleting it from the database
-        await prisma.token.deleteMany({ where: { userId } });
-
-        res.json({ message: 'Signout successful' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-};
-
-export const googleAuthController = async (req, res) => {
-    try {
-        const { email } = req.body;
-        // Check if the email exists in the database
-        const user = await prisma.user.findUnique({ where: { email } });
-        /* eslint-env node */
-        if (user) {
-            // If the user already exists, sign in the user using JWT
-            const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
-            res.json({ token });
-        } else {
-            // If the user does not exist, create a new user with a random password and save it in the database
-            const password = Math.random().toString(36).slice(-8);
-            const newUser = await prisma.user.create({
-                data: {
-                    email,
-                    password
-                }
-            });
-            // Sign in the newly created user using JWT
-
-            const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET);
-            res.json({ token });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
+        res.clearCookie('access_token');
+        res.status(200).json("User has been logged out");
+      } catch (error) {
+        next(error);
+      }
 };
